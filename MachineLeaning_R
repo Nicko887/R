@@ -1,0 +1,221 @@
+###################################################################################
+# Introduction à R et Rstudio
+# Partie 6 Machine Learning En R
+# Par: Natacha NJONGWA YEPNGA - LeCoinStat https://www.youtube.com/c/LeCoinStat
+# Linkedin: https://www.linkedin.com/in/natacha-njongwa-yepnga/?originalSubdomain=fr
+###################################################################################
+
+
+# Utilisation de pacman pour la gestion des packages
+if (!require(pacman)) install.packages("pacman")
+pacman::p_load(caret, ggplot2, tree, shiny, psych)
+
+# Chargement des données iris
+data("iris")
+# View(iris)
+sapply(iris, class)
+
+# Description des Variables Quantitatives
+describe(iris[,sapply(iris, is.numeric)]) 
+
+# Description des Variables Qualitatives
+summary(iris[, sapply(iris, is.factor)])
+
+# Description de tout le dataset
+summary(iris)
+
+
+
+# REPRESENTATION GRAPHIQUE DONNEES
+# Créer un histogramme
+hist(iris$Sepal.Length, probability = TRUE, col = "lightblue", main = "Histogramme de Sepal.Length avec densités")
+# Superposer la courbe de densité de la variable observée en rouge
+lines(density(iris$Sepal.Length), col = "red", lwd = 2)
+
+# Superposer la courbe de densité de la loi normale en bleu
+mu <- mean(sepal_length)
+sigma <- sd(sepal_length)
+curve(dnorm(x, mean = mu, sd = sigma), add = TRUE, col = "blue", lwd = 2)
+
+
+# Standardiser les données
+sepal_length_standardized <- scale(iris$Sepal.Length)
+
+# Créer un histogramme centrée réduite
+hist(sepal_length_standardized, probability = TRUE, col = "lightblue", 
+     main = "Histogramme de Sepal.Length standardisé avec densités",
+     xlab = "Sepal.Length standardisé", ylab = "Densité")
+
+# Superposer la courbe de densité de la variable standardisée en rouge
+lines(density(sepal_length_standardized), col = "red", lwd = 2)
+
+# Superposer la courbe de densité de la loi normale standard en bleu
+curve(dnorm(x, mean = 0, sd = 1), add = TRUE, col = "blue", lwd = 2)
+
+
+
+
+
+
+# VERIFICATION DE LA DISTRIBUTION
+donnees_numerics <- iris[,sapply(iris, is.numeric)]
+donnees_numerics
+
+# Appliquer le test de Shapiro-Wilk à toutes les variables
+shapiro_results <- lapply(donnees_numerics, function(x) shapiro.test(x))
+
+# Afficher les résultats
+names(shapiro_results) <- colnames(donnees_numerics)
+shapiro_results
+
+
+
+# Définir le nombre de lignes et de colonnes dans la disposition
+cols <- 2
+rows <- ncol(donnees_numerics) %/% cols + ncol(donnees_numerics)%%cols
+
+
+# Définir la fenêtre graphique en utilisant par(mfrow = c(rows, cols))
+par(mfrow = c(rows, cols))
+
+# Parcourir toutes les variables numériques du dataframe
+for (col_name in colnames(donnees_numerics)) {
+  
+  # Sélectionner la colonne spécifique
+  variable <- donnees_numerics[[col_name]]
+  
+  # Créer un histogramme
+  hist(variable, probability = TRUE, col = "lightblue", main = paste("Histogramme de", col_name, "avec densités"))
+  
+  # Superposer la courbe de densité de la variable observée en rouge
+  lines(density(variable), col = "red", lwd = 2)
+  
+  # Superposer la courbe de densité de la loi normale en bleu
+  mu <- mean(variable)
+  sigma <- sd(variable)
+  curve(dnorm(x, mean = mu, sd = sigma), add = TRUE, col = "blue", lwd = 2)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Les hypothèses clés de la régression linéaire économétrique sont :
+
+#   Linéarité : La relation entre les variables doit être linéaire.
+# Homoscédasticité : La variance des résidus doit être constante.
+# Normalité des résidus : Les résidus doivent suivre une distribution normale.
+# Indépendance des résidus : Les résidus doivent être indépendants.
+# Pas de multicolinéarité : Les variables indépendantes ne doivent pas être fortement corrélées.
+# Pas d'autocorrélation des résidus : Pas de corrélation sérielle des résidus.
+# Pas de biais d'omission : Toutes les variables pertinentes doivent être incluses dans le modèle.
+
+# Création des ensembles d'entraînement et de test
+set.seed(42)  # Assurer la reproductibilité des résultats
+indexes <- sample(1:nrow(iris), size = 100)
+train <- iris[indexes, ]
+test <- iris[-indexes, ]
+
+# Modèle de régression linéaire
+model_lin <- lm(Petal.Width ~ Petal.Length + Sepal.Length + Sepal.Width, data = train)
+
+# Vérification de la normalité des résidus
+qqnorm(model_lin$residuals)
+qqline(model_lin$residuals)
+shapiro_results <- shapiro.test(model_lin$residuals)
+print(shapiro_results)
+
+# Vérification de l'homoscédasticité
+plot(model_lin$fitted.values, model_lin$residuals,
+     xlab = "Valeurs prédites", ylab = "Résidus",
+     main = "Vérification de l'homoscédasticité")
+
+# Vérification de la linéarité
+ggplot(train, aes(x = Petal.Length, y = Petal.Width)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(title = "Vérification de la linéarité", x = "Petal.Length", y = "Petal.Width")
+
+# Vérification de la multicolinéarité
+matrice_cor <- cor(train[, sapply(train, is.numeric)])
+matrice_cor
+
+# Vérification de l'influence et des points aberrants
+par(mfrow = c(2, 2))  # Configuration d'une disposition en 2x2 pour les graphiques
+plot(model_lin)
+
+# Afficher les statistiques d'influence
+influence.measures(model_lin)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Définir une graine pour la reproductibilité
+set.seed(42)
+
+# Création des ensembles d'entraînement et de test
+indexes <- sample(1:nrow(iris), size = 100)
+train <- iris[indexes, ]
+test <- iris[-indexes, ]
+
+
+# Modèle de régression linéaire
+model_lin <- lm(Petal.Width ~ Petal.Length, data = train)
+
+# Résumé du modèle
+summary(model_lin)
+
+# Visualisation des résultats de la régression
+ggplot(train, aes(x = Petal.Length, y = Petal.Width)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  ggtitle("Régression Linéaire : Largeur du Pétale vs Longueur du Pétale")
+
+
+# Formation d'un modèle d'arbre de décision
+model_tree <- tree(Species ~ ., data = train)
+?tree
+# Visualisation de l'arbre de décision
+plot(model_tree)
+text(model_tree)
+
+# Prédiction avec l'arbre de décision
+predictions <- predict(model_tree, newdata = test, type = "class")
+
+# Matrice de confusion pour évaluer la classification
+confusionMatrix(predictions, test$Species)
+
+
+# Sauvegarde du modèle d'arbre
+save(model_tree, file = "/Users/natachanjongwayepnga/Documents/GitHub/LeCoinStat/LesDebutsEnR/model_tree.RData")
+
+# Sauvegarde des données d'entraînement
+save(train, file = "/Users/natachanjongwayepnga/Documents/GitHub/LeCoinStat/LesDebutsEnR/train_data.RData")
+
+
+# NETTOYAGE ET ORGANISATION #################################
+
+# Nettoyage de l'environnement de travail
+rm(list = ls())  # Supprime toutes les variables
+
